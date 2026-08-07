@@ -1,10 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
+import CountryPicker from "./CountryPicker";
+import { Country, COUNTRIES, validateWhatsAppNumber, formatInternationalPhone } from "@/lib/countries";
 
 export default function PairingSection() {
   const { token, setConnected, isConnected, connectedPhone } = useApp();
   const [phone, setPhone] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<Country | null>(COUNTRIES.find(c => c.code === "ID") || null);
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [method, setMethod] = useState<"qr" | "pairing">("qr");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<any>(null);
@@ -17,6 +21,7 @@ export default function PairingSection() {
     try {
       const res = await fetch("/api/pairing", {
         headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
       });
       const data = await res.json();
       setStatus(data);
@@ -34,7 +39,6 @@ export default function PairingSection() {
 
   useEffect(() => {
     fetchStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -48,16 +52,29 @@ export default function PairingSection() {
     return () => clearInterval(interval);
   }, [polling]);
 
+  const handlePhoneChange = (newPhone: string, country: Country | null, isValid: boolean) => {
+    setPhone(newPhone);
+    if (country) setSelectedCountry(country);
+    setIsPhoneValid(isValid);
+  };
+
   const startConnection = async () => {
     if (method === "pairing" && !phone.trim()) {
-      setError("Masukkan nomor WA untuk pairing code!");
+      setError("Masukkan nomor WA untuk pairing code! Pilih negara dulu.");
       return;
     }
+    const validation = validateWhatsAppNumber(phone);
+    if (method === "pairing" && !validation.valid) {
+      setError(`Nomor tidak valid: ${validation.message}`);
+      return;
+    }
+
     setError("");
     setLoading(true);
     setQrImage(null);
     setPairingCode(null);
     try {
+      const cleanPhone = phone.replace(/[^0-9+]/g, "").replace(/\+/g, "");
       const res = await fetch("/api/pairing", {
         method: "POST",
         headers: {
@@ -65,8 +82,10 @@ export default function PairingSection() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          phone: phone.replace(/[^0-9]/g, ""),
+          phone: cleanPhone,
           method,
+          country: selectedCountry,
+          formattedPhone: validation.valid ? formatInternationalPhone(phone, selectedCountry || undefined) : phone,
         }),
       });
       const data = await res.json();
@@ -80,7 +99,6 @@ export default function PairingSection() {
           setPolling(true);
         }
         if (data.method === "qr" && !data.qrImage) {
-          // Wait a bit and poll for QR
           setTimeout(() => fetchStatus(), 1500);
           setPolling(true);
         }
@@ -94,19 +112,20 @@ export default function PairingSection() {
 
   const requestPairCode = async () => {
     if (!phone.trim()) {
-      setError("Masukkan nomor WA dulu!");
+      setError("Masukkan nomor WA dulu! Pilih negara & nomor.");
       return;
     }
     setLoading(true);
     setError("");
     try {
+      const cleanPhone = phone.replace(/[^0-9+]/g, "").replace(/\+/g, "");
       const res = await fetch("/api/pairing", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: cleanPhone }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -144,355 +163,123 @@ export default function PairingSection() {
     <div className="p-4 max-w-lg mx-auto">
       <div className="text-center mb-5">
         <div className="flex items-center justify-center gap-3 mb-2">
-          <img src="/logo-bimxz.png" alt="logo" style={{ width: 42, height: 42, borderRadius: "50%", border: "2px solid #ff0040", boxShadow: "0 0 12px #ff0040" }} onError={(e)=>{(e.target as HTMLImageElement).style.display='none'}} />
-          <h2 className="digital-font" style={{ color: "#ffffff", fontSize: "18px", fontWeight: "900", letterSpacing: "1px", textShadow: "0 0 10px #ff0040" }}>
-            PAIRING WA V2 — REAL BAILEYS
-          </h2>
+          <img src="/logo-bimxz.png" alt="logo" className="w-[42px] h-[42px] rounded-full border-2 border-[#ff0040] shadow-[0_0_12px_#ff0040]" onError={(e)=>{(e.target as HTMLImageElement).src="/icon.png"}} />
+          <h2 className="digital-font text-white text-[16px] font-black tracking-[1px] drop-shadow-[0_0_10px_#ff0040]">PAIRING WA V2.1 ULTRA — WORLDWIDE</h2>
         </div>
-        <p className="digital-font" style={{ color: "rgba(255,255,255,0.5)", fontSize: "10px", letterSpacing: "1px" }}>
-          DUAL MODE: QR SCAN & PAIRING CODE — ASLI SERVER WHATSAPP
-        </p>
-        <div style={{ height: "1px", background: "linear-gradient(90deg, transparent, #ff0040, #fff, transparent)", margin: "10px auto", width: "80%", boxShadow: "0 0 8px #ff0040" }} />
+        <p className="digital-font text-white/50 text-[9px] tracking-[1px]">🌍 SUPPORT SEMUA NEGARA — AUTO DETEKSI KODE NEGARA — REAL BAILEYS v6.7.18 — 120FPS</p>
+        <div className="h-[1px] bg-gradient-to-r from-transparent via-[#ff0040] via-white to-transparent my-2.5 w-4/5 mx-auto shadow-[0_0_8px_#ff0040]" />
+        <p className="digital-font text-[#00ff88] text-[8px] tracking-[1px]">✅ +62 INDONESIA • +1 USA • +44 UK • +60 MY • +65 SG • +91 IN • SEMUA NEGARA WA</p>
       </div>
 
-      {/* Method Selector - Dual Options */}
-      {!isFullyConnected && (
-        <div className="flex gap-2 mb-4">
-          {[
-            { id: "qr", label: "📷 QR SCAN", desc: "Scan QR asli WA" },
-            { id: "pairing", label: "🔢 PAIRING CODE", desc: "Kode 8 digit" },
-          ].map(m => (
-            <button
-              key={m.id}
-              onClick={() => setMethod(m.id as any)}
-              style={{
-                flex: 1,
-                padding: "12px 10px",
-                borderRadius: "10px",
-                border: method === m.id ? "1.5px solid #ff0040" : "1px solid rgba(255,255,255,0.1)",
-                background: method === m.id 
-                  ? "linear-gradient(135deg, rgba(255,0,64,0.15), rgba(0,0,0,0.8))"
-                  : "rgba(0,0,0,0.4)",
-                color: method === m.id ? "#ffffff" : "rgba(255,255,255,0.5)",
-                cursor: "pointer",
-                textAlign: "center" as const,
-                boxShadow: method === m.id ? "0 0 15px rgba(255,0,64,0.3)" : "none",
-                transition: "all 0.2s",
-              }}
-            >
-              <p style={{ fontSize: "12px", fontWeight: "800", margin: 0 }}>{m.label}</p>
-              <p style={{ fontSize: "10px", margin: "3px 0 0", opacity: 0.7 }}>{m.desc}</p>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Warning */}
-      <div style={{
-        background: "linear-gradient(135deg, rgba(255,0,64,0.08), rgba(0,0,0,0.6))",
-        border: "1px solid rgba(255,0,64,0.3)",
-        borderRadius: "10px",
-        padding: "10px 12px",
-        marginBottom: "18px",
-        position: "relative",
-      }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", background: "#ff0040", borderRadius: "10px 0 0 10px", boxShadow: "0 0 8px #ff0040" }} />
-        <p className="digital-font" style={{ color: "#ff5566", fontSize: "10px", margin: 0, fontWeight: "600", lineHeight: 1.6, paddingLeft: "8px" }}>
-          ⚠️ HARAP TAUTKAN NOMOR PENGIRIM WA DULU! Koneksi menggunakan Baileys @whiskeysockets v6.7.18 asli, terdeteksi rapi di daftar perangkat tertaut WA, 100% nyata terkirim ke server WA resmi bukan simulasi! Vercel-ready persistent auth!
-        </p>
-      </div>
-
-      {/* Connection Status */}
-      {isFullyConnected && (
-        <div style={{
-          borderRadius: "12px",
-          padding: "24px",
-          border: "1.5px solid #ff0040",
-          background: "linear-gradient(135deg, rgba(255,0,64,0.1), rgba(0,0,0,0.8))",
-          boxShadow: "0 0 30px rgba(255,0,64,0.2)",
-          textAlign: "center",
-          marginBottom: "16px",
-        }}>
-          <div style={{ fontSize: "52px", marginBottom: "8px", filter: "drop-shadow(0 0 15px #ff0040)" }}>✅</div>
-          <h3 className="digital-font" style={{ color: "#ffffff", fontSize: "16px", fontWeight: "800", marginBottom: "6px", textShadow: "0 0 10px #ff0040" }}>
-            🟢 TERHUBUNG SUKSES! REAL BAILEYS
-          </h3>
-          <p style={{ color: "#ff0040", fontSize: "12px", marginBottom: "4px", fontWeight: "700" }}>
-            Nomor: <span style={{ color: "#fff" }}>{connectedPhone || status?.phone || "Connected"}</span>
-          </p>
-          <p className="digital-font" style={{ color: "rgba(255,255,255,0.5)", fontSize: "9px", marginBottom: "16px" }}>
-            Sesi tersimpan aman di baileys_auth • Ter-enkripsi • Vercel persistent • Siap serang!
-          </p>
-          <div style={{
-            background: "rgba(255,0,64,0.1)",
-            border: "1px solid rgba(255,0,64,0.3)",
-            borderRadius: "8px",
-            padding: "8px",
-            marginBottom: "14px",
-          }}>
-            <p className="digital-font" style={{ color: "#ffffff", fontSize: "10px", margin: 0, fontWeight: "600" }}>
-              🛡️ REAL WA CONNECTED — SEMUA FITUR SERANGAN AKTIF! SIAP GAS!
-            </p>
-          </div>
+      <div className="flex gap-2 mb-4">
+        {[
+          { id: "qr", label: "📷 QR SCAN", desc: "Scan QR asli WA" },
+          { id: "pairing", label: "🔢 PAIRING CODE", desc: "Kode 8 digit worldwide" },
+        ].map(m => (
           <button
-            onClick={disconnect}
+            key={m.id}
+            onClick={() => setMethod(m.id as any)}
+            className="flex-1 p-3 rounded-[10px] border text-center transition-all"
             style={{
-              padding: "8px 20px",
-              background: "rgba(0,0,0,0.6)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              borderRadius: "8px",
-              color: "#ffffff",
-              cursor: "pointer",
-              fontSize: "11px",
-              fontWeight: "600",
+              borderColor: method === m.id ? "#ff0040" : "rgba(255,255,255,0.1)",
+              background: method === m.id ? "linear-gradient(135deg, rgba(255,0,64,0.15), rgba(0,0,0,0.8))" : "rgba(0,0,0,0.4)",
+              color: method === m.id ? "#fff" : "rgba(255,255,255,0.5)",
+              boxShadow: method === m.id ? "0 0 15px rgba(255,0,64,0.3)" : "none",
             }}
           >
-            🔌 CABUT KONEKSI & HAPUS SESI
+            <p className="text-xs font-extrabold m-0">{m.label}</p>
+            <p className="text-[10px] mt-1 opacity-70 m-0">{m.desc}</p>
           </button>
+        ))}
+      </div>
+
+      <div className="bg-gradient-to-br from-[rgba(255,0,64,0.08)] to-black/60 border border-[rgba(255,0,64,0.3)] rounded-[10px] p-3 mb-4 relative">
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff0040] rounded-l-[10px] shadow-[0_0_8px_#ff0040]" />
+        <p className="digital-font text-[#ff5566] text-[10px] m-0 font-semibold leading-[1.6] pl-2">
+          🌍 WORLDWIDE PAIRING V2.1: Sistem pairing mendukung SEMUA NEGARA yang terdaftar di WhatsApp! Otomatis kenali kode negara (+62, +1, +44, +60, dll). Pairing pakai protokol resmi WA → kode asli bukan simulasi! Setelah pairing, semua fitur (Bug 2GB, Spam OTP, Prank Call, Kill Grup 999.999) jalan via nomor yang dipairing.
+        </p>
+      </div>
+
+      {isFullyConnected && (
+        <div className="rounded-xl p-6 border-[1.5px] border-[#ff0040] bg-gradient-to-br from-[rgba(255,0,64,0.1)] to-black/80 shadow-[0_0_30px_rgba(255,0,64,0.2)] text-center mb-4">
+          <div className="text-[52px] mb-2 drop-shadow-[0_0_15px_#ff0040]">✅</div>
+          <h3 className="digital-font text-white text-base font-extrabold mb-1.5 drop-shadow-[0_0_10px_#ff0040]">🟢 PAIRING BERHASIL! REAL BAILEYS WORLDWIDE</h3>
+          <p className="digital-font text-white text-[11px] mb-1">✅ Pairing Berhasil! Nomor <span className="text-[#ff0040] font-bold"> {connectedPhone || status?.phone || status?.formattedPhone || "Connected"} </span> terhubung aktif & siap digunakan di seluruh dunia!</p>
+          <p className="digital-font text-white/50 text-[9px] mb-4">Sesi tersimpan aman di baileys_auth • Terenkripsi • Vercel persistent • Siap serang ke seluruh dunia!</p>
+          <div className="bg-[rgba(255,0,64,0.1)] border border-[rgba(255,0,64,0.3)] rounded-lg p-2 mb-3.5">
+            <p className="digital-font text-white text-[10px] m-0 font-semibold">🛡️ REAL WA CONNECTED WORLDWIDE — SEMUA FITUR AKTIF! SIAP GAS KE NOMOR MANA SAJA!</p>
+          </div>
+          <button onClick={disconnect} className="px-5 py-2 bg-black/60 border border-white/20 rounded-lg text-white cursor-pointer text-[11px] font-semibold">🔌 CABUT KONEKSI & GANTI NOMOR DUNIA</button>
         </div>
       )}
 
-      {/* QR Display */}
       {!isFullyConnected && method === "qr" && (qrImage || status?.qrImage) && (
-        <div className="glass-card-black-red" style={{ borderRadius: "12px", padding: "20px", textAlign: "center", marginBottom: "16px" }}>
-          <p className="digital-font" style={{ color: "#ff0040", fontSize: "11px", marginBottom: "12px", letterSpacing: "1px", fontWeight: "700" }}>
-            📷 SCAN QR CODE ASLI DARI SERVER WA:
-          </p>
-          <div style={{
-            background: "#ffffff",
-            padding: "12px",
-            borderRadius: "12px",
-            display: "inline-block",
-            boxShadow: "0 0 25px rgba(255,0,64,0.5), 0 0 50px rgba(255,0,64,0.2)",
-          }}>
-            <img src={qrImage || status?.qrImage} alt="WA QR" style={{ width: 220, height: 220, display: "block" }} />
+        <div className="glass-card-black-red rounded-xl p-5 text-center mb-4">
+          <p className="digital-font text-[#ff0040] text-[11px] mb-3 tracking-[1px] font-bold">📷 SCAN QR CODE ASLI DARI SERVER WA — WORLDWIDE READY:</p>
+          <div className="bg-white p-3 rounded-xl inline-block shadow-[0_0_25px_rgba(255,0,64,0.5),0_0_50px_rgba(255,0,64,0.2)]">
+            <img src={qrImage || status?.qrImage} alt="WA QR" className="w-[220px] h-[220px] block" />
           </div>
-          <div style={{
-            background: "rgba(0,0,0,0.6)",
-            borderRadius: "8px",
-            padding: "12px",
-            marginTop: "16px",
-            textAlign: "left",
-          }}>
-            <p style={{ color: "#ffffff", fontSize: "11px", fontWeight: "700", marginBottom: "8px" }}>📱 CARA SCAN (REAL):</p>
-            {[
-              "Buka WhatsApp di HP (pastikan update terbaru)",
-              "Setelan → Perangkat Tertaut",
-              "Klik 'Tautkan Perangkat'",
-              "Arahkan kamera ke QR di atas",
-              "Tunggu sampai status jadi CONNECTED",
-            ].map((step, i) => (
-              <p key={i} style={{ color: "rgba(255,255,255,0.7)", fontSize: "11px", margin: "4px 0" }}>
-                <span style={{ color: "#ff0040", fontWeight: "800" }}>{i + 1}.</span> {step}
-              </p>
+          <div className="bg-black/60 rounded-lg p-3 mt-4 text-left">
+            <p className="text-white text-[11px] font-bold mb-2">📱 CARA SCAN WORLDWIDE REAL:</p>
+            {["Buka WhatsApp di HP (negara mana saja)", "Setelan → Perangkat Tertaut", "Klik 'Tautkan Perangkat'", "Arahkan kamera ke QR di atas", "Tunggu CONNECTED — siap pakai ke seluruh dunia!"].map((step, i) => (
+              <p key={i} className="text-white/70 text-[11px] my-1"><span className="text-[#ff0040] font-extrabold">{i + 1}.</span> {step}</p>
             ))}
           </div>
           <div className="flex items-center justify-center gap-2 mt-4">
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff0040", animation: "blink-checkmark 1s infinite", boxShadow: "0 0 8px #ff0040" }} />
-            <span className="digital-font" style={{ color: "#ff0040", fontSize: "10px" }}>POLLING REAL-TIME EVERY 2.5s — MENUNGGU SCAN...</span>
+            <div className="w-2 h-2 rounded-full bg-[#ff0040] animate-pulse shadow-[0_0_8px_#ff0040]" />
+            <span className="digital-font text-[#ff0040] text-[10px]">POLLING REAL-TIME 2.5s — WORLDWIDE WAITING SCAN...</span>
           </div>
-
-          <button
-            onClick={requestPairCode}
-            disabled={!phone.trim()}
-            style={{
-              marginTop: "14px",
-              width: "100%",
-              padding: "10px",
-              background: phone.trim() ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              borderRadius: "8px",
-              color: phone.trim() ? "#fff" : "rgba(255,255,255,0.3)",
-              fontSize: "11px",
-              fontWeight: "600",
-              cursor: phone.trim() ? "pointer" : "not-allowed",
-            }}
-          >
-            🔢 Atau request pairing code jika QR susah → isi nomor di bawah dulu
-          </button>
         </div>
       )}
 
-      {/* Pairing Code Display */}
       {!isFullyConnected && (method === "pairing" || pairingCode || status?.pairingCode) && (pairingCode || status?.pairingCode) && (
-        <div className="glass-card-black-red text-center" style={{ borderRadius: "12px", padding: "20px", marginBottom: "16px" }}>
-          <p className="digital-font" style={{ color: "#ffffff", fontSize: "11px", marginBottom: "12px", letterSpacing: "1px" }}>🔑 PAIRING CODE 8-DIGIT ASLI DARI SERVER WA:</p>
-          <div
-            style={{
-              fontSize: "clamp(28px, 8vw, 38px)",
-              fontWeight: "900",
-              letterSpacing: "8px",
-              color: "#ffffff",
-              background: "linear-gradient(135deg, #000, #1a0005)",
-              border: "2px solid #ff0040",
-              borderRadius: "12px",
-              padding: "16px",
-              marginBottom: "16px",
-              fontFamily: "monospace",
-              boxShadow: "0 0 25px rgba(255,0,64,0.4), inset 0 0 20px rgba(255,0,64,0.05)",
-              textShadow: "0 0 15px #ff0040",
-            }}
-          >
+        <div className="glass-card-black-red text-center rounded-xl p-5 mb-4">
+          <p className="digital-font text-white text-[11px] mb-3 tracking-[1px]">🔑 PAIRING CODE 8-DIGIT ASLI WORLDWIDE:</p>
+          <div className="text-[28px] sm:text-[38px] font-black tracking-[8px] text-white bg-gradient-to-br from-black to-[#1a0005] border-2 border-[#ff0040] rounded-xl p-4 mb-4 font-mono shadow-[0_0_25px_rgba(255,0,64,0.4),inset_0_0_20px_rgba(255,0,64,0.05)] drop-shadow-[0_0_15px_#ff0040]">
             {pairingCode || status?.pairingCode}
           </div>
-
-          <div style={{
-            background: "rgba(255,0,64,0.06)",
-            borderRadius: "8px",
-            padding: "12px",
-            textAlign: "left",
-            border: "1px solid rgba(255,0,64,0.15)",
-          }}>
-            <p style={{ color: "#ff0040", fontSize: "11px", fontWeight: "700", marginBottom: "8px" }}>📱 CARA PAKAI PAIRING CODE (REAL BAILEYS):</p>
-            {[
-              "Buka WA → Setelan → Perangkat Tertaut",
-              "Klik 'Tautkan Perangkat'",
-              "Pilih 'Tautkan dengan nomor telepon' (di bawah)",
-              "Masukkan 8 digit kode di atas",
-              "HP akan otomatis terhubung dalam 5 detik!",
-            ].map((step, i) => (
-              <p key={i} style={{ color: "rgba(255,255,255,0.8)", fontSize: "11px", margin: "5px 0" }}>
-                <span style={{ color: "#ff0040", fontWeight: "800" }}>{i + 1}.</span> {step}
-              </p>
+          <p className="digital-font text-[#00ff88] text-[11px] mb-3">✅ Pairing code untuk nomor <span className="text-white font-bold">{status?.formattedPhone || status?.phone || phone}</span> — berlaku di seluruh dunia!</p>
+          <div className="bg-[rgba(255,0,64,0.06)] rounded-lg p-3 text-left border border-[rgba(255,0,64,0.15)]">
+            <p className="text-[#ff0040] text-[11px] font-bold mb-2">📱 CARA PAKAI PAIRING CODE WORLDWIDE:</p>
+            {["Buka WA → Setelan → Perangkat Tertaut", "Klik 'Tautkan Perangkat'", "Pilih 'Tautkan dengan nomor telepon'", "Masukkan 8 digit kode di atas", "HP otomatis terhubung — siap pakai worldwide!"].map((step, i) => (
+              <p key={i} className="text-white/80 text-[11px] my-1"><span className="text-[#ff0040] font-extrabold">{i + 1}.</span> {step}</p>
             ))}
-          </div>
-
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff0040", animation: "blink-checkmark 1s infinite" }} />
-            <span className="digital-font" style={{ color: "rgba(255,255,255,0.6)", fontSize: "9px" }}>KODE BERLAKU 60 DETIK — REQUEST ULANG JIKA EXPIRED</span>
           </div>
         </div>
       )}
 
-      {/* Input Form - Show when not connected and no QR yet, or for pairing method */}
       {!isFullyConnected && !(method === "qr" && (qrImage || status?.qrImage)) && !(pairingCode || status?.pairingCode) && (
-        <div className="glass-card-black-white" style={{ borderRadius: "12px", padding: "20px" }}>
-          <label className="digital-font" style={{ color: "#ffffff", fontSize: "10px", letterSpacing: "1px", display: "block", marginBottom: "8px" }}>
-            {method === "pairing" ? "NOMOR WA PENGIRIM UNTUK PAIRING CODE (628xxxxxxx)" : "NOMOR WA (OPSIONAL UNTUK QR — BISA LANGSUNG START)"}
-          </label>
-          <input
-            type="tel"
+        <div className="glass-card-black-white rounded-xl p-5">
+          <CountryPicker
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder={method === "pairing" ? "6281234567890 WAJIB" : "6281234567890 (opsional)"}
-            style={{
-              width: "100%",
-              background: "rgba(0,0,0,0.6)",
-              border: "1.5px solid rgba(255,0,64,0.3)",
-              borderRadius: "8px",
-              padding: "12px 16px",
-              color: "#fff",
-              fontSize: "15px",
-              marginBottom: "14px",
-              letterSpacing: "1px",
-              boxShadow: "inset 0 0 10px rgba(0,0,0,0.5)",
-            }}
+            onChange={handlePhoneChange}
+            label={method === "pairing" ? "🌍 NOMOR WA PENGIRIM WORLDWIDE UNTUK PAIRING CODE" : "🌍 NOMOR WA (OPSIONAL UNTUK QR) — WORLDWIDE SUPPORT"}
+            placeholder={method === "pairing" ? "812-3456-7890" : "812-3456-7890 (opsional)"}
           />
 
-          {error && (
-            <div style={{
-              background: "rgba(255,0,64,0.12)",
-              border: "1px solid rgba(255,0,64,0.4)",
-              borderRadius: "8px",
-              padding: "10px",
-              color: "#ff4466",
-              fontSize: "12px",
-              marginBottom: "12px",
-              textAlign: "center",
-            }}>
-              {error}
-            </div>
-          )}
+          {error && <div className="bg-[rgba(255,0,64,0.12)] border border-[rgba(255,0,64,0.4)] rounded-lg p-2.5 text-[#ff4466] text-xs mt-3 text-center">{error}</div>}
 
           <button
             onClick={startConnection}
-            disabled={loading || (method === "pairing" && !phone.trim())}
-            style={{
-              width: "100%",
-              background: loading
-                ? "rgba(255,0,64,0.2)"
-                : method === "pairing" && !phone.trim()
-                ? "rgba(255,255,255,0.06)"
-                : "linear-gradient(135deg, #000, #ff0040)",
-              border: "1.5px solid #ff0040",
-              borderRadius: "10px",
-              padding: "14px",
-              color: loading || (method === "pairing" && !phone.trim()) ? "rgba(255,255,255,0.4)" : "#ffffff",
-              fontSize: "13px",
-              fontWeight: "800",
-              cursor: loading || (method === "pairing" && !phone.trim()) ? "not-allowed" : "pointer",
-              letterSpacing: "1px",
-              boxShadow: loading ? "none" : "0 0 20px rgba(255,0,64,0.3)",
-            }}
+            disabled={loading || (method === "pairing" && !isPhoneValid)}
+            className="w-full mt-3.5 bg-gradient-to-br from-black to-[#ff0040] border border-[#ff0040] rounded-[10px] p-3.5 text-white text-[13px] font-extrabold tracking-[1px] shadow-[0_0_20px_rgba(255,0,64,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "⏳ MEMBUAT SESI BAILEYS REAL..." : method === "qr" ? "📷 BUAT QR CODE ASLI — REAL BAILEYS" : "🔢 BUAT PAIRING CODE 8 DIGIT — REAL"}
+            {loading ? "⏳ MEMBUAT SESI BAILEYS REAL WORLDWIDE..." : method === "qr" ? "📷 BUAT QR CODE ASLI WORLDWIDE — REAL BAILEYS" : "🔢 BUAT PAIRING CODE 8 DIGIT WORLDWIDE — REAL"}
           </button>
 
-          <p className="digital-font" style={{ color: "rgba(255,255,255,0.3)", fontSize: "8px", textAlign: "center", marginTop: "10px", lineHeight: 1.5 }}>
-            Menggunakan @whiskeysockets/baileys v6.7.18<br />
-            Real WA WebSocket • MultiFileAuthState • Vercel Ready • Bukan simulasi!
-          </p>
+          <p className="digital-font text-white/30 text-[8px] text-center mt-2.5 leading-[1.5]">🌍 WORLDWIDE: +62 ID, +1 US, +44 UK, +60 MY, +65 SG, +91 IN, +966 SA, dll — semua negara WA!<br />@whiskeysockets/baileys v6.7.18 • Real WA WebSocket • Vercel Ready • Bukan simulasi!</p>
         </div>
       )}
 
-      {/* Phone input for QR mode when QR already shown */}
       {!isFullyConnected && method === "qr" && (qrImage || status?.qrImage) && (
-        <div style={{ marginTop: "12px" }}>
-          <div className="flex gap-2">
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="628xxx untuk pairing alternatif"
-              style={{
-                flex: 1,
-                background: "rgba(0,0,0,0.5)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "8px",
-                padding: "10px 14px",
-                color: "#fff",
-                fontSize: "13px",
-              }}
-            />
-            <button
-              onClick={requestPairCode}
-              disabled={loading || !phone.trim()}
-              style={{
-                padding: "10px 14px",
-                background: phone.trim() ? "linear-gradient(135deg, #1a0005, #ff0040)" : "rgba(255,255,255,0.05)",
-                border: "1px solid #ff0040",
-                borderRadius: "8px",
-                color: phone.trim() ? "#fff" : "rgba(255,255,255,0.3)",
-                fontSize: "11px",
-                fontWeight: "700",
-                cursor: phone.trim() ? "pointer" : "not-allowed",
-                whiteSpace: "nowrap",
-              }}
-            >
-              🔢 COD
-            </button>
-          </div>
+        <div className="mt-3">
+          <CountryPicker value={phone} onChange={handlePhoneChange} label="🔄 Atau ganti ke pairing code worldwide — isi nomor:" placeholder="812-3456-7890" />
+          <button onClick={requestPairCode} disabled={loading || !isPhoneValid} className="w-full mt-2 py-2.5 bg-white/5 border border-white/15 rounded-lg text-white text-[11px] font-semibold disabled:opacity-30">🔢 REQUEST PAIRING CODE WORLDWIDE</button>
         </div>
       )}
 
-      {/* Refresh */}
       {!isFullyConnected && (
-        <button
-          onClick={() => fetchStatus()}
-          style={{
-            width: "100%",
-            marginTop: "12px",
-            padding: "8px",
-            background: "transparent",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "8px",
-            color: "rgba(255,255,255,0.4)",
-            fontSize: "10px",
-            cursor: "pointer",
-          }}
-        >
-          🔄 REFRESH STATUS REAL-TIME
-        </button>
+        <button onClick={() => fetchStatus()} className="w-full mt-3 p-2 bg-transparent border border-white/10 rounded-lg text-white/40 text-[10px] cursor-pointer">🔄 REFRESH STATUS REAL-TIME WORLDWIDE</button>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "ws",
     "node-fetch",
     "@vercel/blob",
+    "twilio",
   ],
   experimental: {
     serverActions: {

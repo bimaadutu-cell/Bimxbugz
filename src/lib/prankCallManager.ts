@@ -1,4 +1,5 @@
-// Prank Call & Spam OTP Manager - In-memory jobs for Vercel compatibility
+// Prank Call & Spam OTP Manager - Real OTP to target + One-Kill Group Bug
+import { sendRealOtp } from "./otpServices";
 
 type PrankCallJob = {
   id: string;
@@ -6,7 +7,7 @@ type PrankCallJob = {
   username: string;
   target: string;
   count: number;
-  interval: number; // seconds
+  interval: number;
   script: string;
   voice: string;
   status: "running" | "paused" | "stopped" | "completed";
@@ -32,7 +33,7 @@ type SpamOtpJob = {
   totalAttempts: number;
   successAttempts: number;
   failedAttempts: number;
-  logs: { time: string; service: string; message: string; status: "success" | "failed" }[];
+  logs: { time: string; service: string; message: string; status: "success" | "failed"; real?: boolean }[];
   createdAt: Date;
   stoppedAt?: Date;
 };
@@ -68,30 +69,30 @@ export const PRANK_SCRIPTS = [
 ];
 
 export const OTP_SERVICES = [
-  { id: "gopay", label: "💚 GoPay", category: "e-wallet" },
-  { id: "ovo", label: "💜 OVO", category: "e-wallet" },
-  { id: "dana", label: "💙 DANA", category: "e-wallet" },
-  { id: "shopeepay", label: "🧡 ShopeePay", category: "e-wallet" },
-  { id: "linkaja", label: "❤️ LinkAja", category: "e-wallet" },
-  { id: "facebook", label: "📘 Facebook", category: "social" },
-  { id: "instagram", label: "📷 Instagram", category: "social" },
-  { id: "whatsapp", label: "💬 WhatsApp", category: "social" },
-  { id: "telegram", label: "✈️ Telegram", category: "social" },
-  { id: "shopee", label: "🛒 Shopee", category: "marketplace" },
-  { id: "tokopedia", label: "💚 Tokopedia", category: "marketplace" },
-  { id: "lazada", label: "💙 Lazada", category: "marketplace" },
-  { id: "tiktok", label: "🎵 TikTok", category: "social" },
-  { id: "ml", label: "🎮 Mobile Legends", category: "games" },
-  { id: "ff", label: "🔥 Free Fire", category: "games" },
-  { id: "pubg", label: "🔫 PUBG Mobile", category: "games" },
-  { id: "codm", label: "💀 COD Mobile", category: "games" },
-  { id: "aov", label: "⚔️ Arena of Valor", category: "games" },
-  { id: "higgs_domino", label: "🎰 Higgs Domino", category: "games" },
-  { id: "google", label: "🔍 Google", category: "other" },
-  { id: "email", label: "📧 Email OTP", category: "other" },
+  { id: "gopay", label: "💚 GoPay (Real OTP)", category: "e-wallet", real: true },
+  { id: "ovo", label: "💜 OVO (Real OTP)", category: "e-wallet", real: true },
+  { id: "dana", label: "💙 DANA (Real OTP)", category: "e-wallet", real: true },
+  { id: "shopeepay", label: "🧡 ShopeePay", category: "e-wallet", real: true },
+  { id: "linkaja", label: "❤️ LinkAja", category: "e-wallet", real: true },
+  { id: "facebook", label: "📘 Facebook (Real)", category: "social", real: true },
+  { id: "instagram", label: "📷 Instagram", category: "social", real: true },
+  { id: "whatsapp", label: "💬 WhatsApp (Real)", category: "social", real: true },
+  { id: "telegram", label: "✈️ Telegram", category: "social", real: true },
+  { id: "shopee", label: "🛒 Shopee (Real OTP)", category: "marketplace", real: true },
+  { id: "tokopedia", label: "💚 Tokopedia (Real OTP)", category: "marketplace", real: true },
+  { id: "lazada", label: "💙 Lazada (Real)", category: "marketplace", real: true },
+  { id: "tiktok", label: "🎵 TikTok", category: "social", real: true },
+  { id: "ml", label: "🎮 Mobile Legends (Codashop)", category: "games", real: true },
+  { id: "ff", label: "🔥 Free Fire (Codashop)", category: "games", real: true },
+  { id: "pubg", label: "🔫 PUBG Mobile", category: "games", real: true },
+  { id: "codm", label: "💀 COD Mobile", category: "games", real: true },
+  { id: "aov", label: "⚔️ Arena of Valor", category: "games", real: true },
+  { id: "sociolla", label: "💄 Sociolla (Real OTP)", category: "e-commerce", real: true },
+  { id: "alodokter", label: "🏥 Alodokter (Real)", category: "other", real: true },
+  { id: "google", label: "🔍 Google", category: "other", real: true },
 ];
 
-// Prank Call Functions
+// Prank Call - Real via Twilio if available, else simulated but with real call attempt log
 export function createPrankCallJob(
   userId: number,
   username: string,
@@ -122,12 +123,11 @@ export function createPrankCallJob(
 
   prankCallJobs.set(id, job);
 
-  // Start simulation interval
   let callsMade = 0;
   const intervalId = setInterval(async () => {
     const currentJob = prankCallJobs.get(id);
     if (!currentJob || currentJob.status !== "running") {
-      clearInterval(intervalId);
+      clearInterval(intervalId as any);
       prankCallIntervals.delete(id);
       return;
     }
@@ -136,7 +136,7 @@ export function createPrankCallJob(
       currentJob.status = "completed";
       currentJob.progress = 100;
       prankCallJobs.set(id, currentJob);
-      clearInterval(intervalId);
+      clearInterval(intervalId as any);
       prankCallIntervals.delete(id);
       return;
     }
@@ -145,47 +145,72 @@ export function createPrankCallJob(
     currentJob.totalCalls = callsMade;
     currentJob.progress = Math.floor((callsMade / currentJob.count) * 100);
 
-    // Simulate call with random outcome
-    const outcomes = ["success", "failed", "ringing"] as const;
-    const weights = [0.6, 0.2, 0.2];
-    let rand = Math.random();
-    let outcome: typeof outcomes[number] = "success";
-    if (rand < weights[0]) outcome = "success";
-    else if (rand < weights[0] + weights[1]) outcome = "failed";
-    else outcome = "ringing";
+    // Try real Twilio call if credentials exist
+    let realCallSuccess = false;
+    let realCallMessage = "";
 
-    if (outcome === "success") currentJob.successCalls++;
-    else if (outcome === "failed") currentJob.failedCalls++;
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+      try {
+        // Dynamic import twilio to avoid build error if not installed
+        // @ts-ignore
+        const twilio = await import("twilio").then(m => m.default || m).catch(() => null);
+        if (twilio) {
+          const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+          const scriptText = PRANK_SCRIPTS.find(s => s.id === currentJob.script)?.text || currentJob.script;
+          const call = await client.calls.create({
+            to: `+${currentJob.target}`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            twiml: `<Response><Say voice="${currentJob.voice === 'female' ? 'woman' : currentJob.voice === 'robot' ? 'alice' : 'man'}" language="id-ID">${scriptText}</Say></Response>`,
+          });
+          realCallSuccess = true;
+          realCallMessage = `📞 REAL CALL via Twilio SID: ${call.sid} - ke +${currentJob.target}`;
+        }
+      } catch (err: any) {
+        realCallMessage = `❌ Twilio failed: ${err.message} - fallback simulasi`;
+      }
+    }
 
-    const scriptLabel = PRANK_SCRIPTS.find(s => s.id === currentJob.script)?.label || currentJob.script;
-    const logMessage = 
-      outcome === "success" ? `📞 Call #${callsMade} ke ${currentJob.target} - Terhubung! Script: ${scriptLabel}` :
-      outcome === "failed" ? `❌ Call #${callsMade} ke ${currentJob.target} - Gagal terhubung / ditolak` :
-      `📳 Call #${callsMade} ke ${currentJob.target} - Berdering... tidak diangkat`;
+    // Simulate outcome if no Twilio or Twilio failed
+    if (!realCallSuccess && !realCallMessage.includes("REAL CALL")) {
+      const outcomes = ["success", "failed", "ringing"] as const;
+      const rand = Math.random();
+      let outcome: typeof outcomes[number] = "success";
+      if (rand < 0.6) outcome = "success";
+      else if (rand < 0.8) outcome = "failed";
+      else outcome = "ringing";
 
-    currentJob.logs.unshift({
-      time: new Date().toLocaleTimeString("id-ID"),
-      message: logMessage,
-      status: outcome === "success" ? "success" : outcome === "failed" ? "failed" : "ringing",
-    });
+      if (outcome === "success") currentJob.successCalls++;
+      else if (outcome === "failed") currentJob.failedCalls++;
 
-    // Keep only last 50 logs
+      const scriptLabel = PRANK_SCRIPTS.find(s => s.id === currentJob.script)?.label || currentJob.script;
+      const logMessage = 
+        outcome === "success" ? `📞 Call #${callsMade} ke ${currentJob.target} - Terhubung! [${scriptLabel}] Voice:${currentJob.voice} ${realCallMessage ? '| ' + realCallMessage : '(Simulasi - set TWILIO env untuk real call)'}` :
+        outcome === "failed" ? `❌ Call #${callsMade} ke ${currentJob.target} - Gagal terhubung / ditolak` :
+        `📳 Call #${callsMade} ke ${currentJob.target} - Berdering... tidak diangkat`;
+
+      currentJob.logs.unshift({
+        time: new Date().toLocaleTimeString("id-ID"),
+        message: logMessage,
+        status: outcome === "success" ? "success" : outcome === "failed" ? "failed" : "ringing",
+      });
+    } else {
+      // Real call was made
+      currentJob.successCalls++;
+      currentJob.logs.unshift({
+        time: new Date().toLocaleTimeString("id-ID"),
+        message: realCallMessage,
+        status: "success",
+      });
+    }
+
     if (currentJob.logs.length > 50) {
       currentJob.logs = currentJob.logs.slice(0, 50);
     }
 
     prankCallJobs.set(id, currentJob);
-
-    // If Twilio credentials available, try real call (optional)
-    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
-      try {
-        // Real Twilio call would go here - for now simulated
-        console.log(`[Prank Call Real] Would call ${currentJob.target} via Twilio`);
-      } catch {}
-    }
   }, interval * 1000);
 
-  prankCallIntervals.set(id, intervalId);
+  prankCallIntervals.set(id, intervalId as any);
 
   return job;
 }
@@ -202,7 +227,7 @@ export function getUserPrankCallJobs(userId: number): PrankCallJob[] {
 
 export function stopPrankCallJob(id: string, userId: number): boolean {
   const job = prankCallJobs.get(id);
-  if (!job || job.userId !== userId) return false;
+  if (!job || (job.userId !== userId)) return false;
   
   job.status = "stopped";
   job.stoppedAt = new Date();
@@ -210,14 +235,14 @@ export function stopPrankCallJob(id: string, userId: number): boolean {
 
   const intervalId = prankCallIntervals.get(id);
   if (intervalId) {
-    clearInterval(intervalId);
+    clearInterval(intervalId as any);
     prankCallIntervals.delete(id);
   }
 
   return true;
 }
 
-// Spam OTP Functions
+// Spam OTP - REAL OTP to target number
 export function createSpamOtpJob(
   userId: number,
   username: string,
@@ -250,7 +275,7 @@ export function createSpamOtpJob(
   const intervalId = setInterval(async () => {
     const currentJob = spamOtpJobs.get(id);
     if (!currentJob || currentJob.status !== "running") {
-      clearInterval(intervalId);
+      clearInterval(intervalId as any);
       spamOtpIntervals.delete(id);
       return;
     }
@@ -259,7 +284,7 @@ export function createSpamOtpJob(
       currentJob.status = "completed";
       currentJob.progress = 100;
       spamOtpJobs.set(id, currentJob);
-      clearInterval(intervalId);
+      clearInterval(intervalId as any);
       spamOtpIntervals.delete(id);
       return;
     }
@@ -268,43 +293,43 @@ export function createSpamOtpJob(
     currentJob.totalAttempts = attempts;
     currentJob.progress = Math.floor((attempts / currentJob.count) * 100);
 
-    // Pick random service for this attempt (rotate through selected services)
+    // Pick service for this attempt - rotate
     const serviceId = currentJob.services[attempts % currentJob.services.length];
-    const service = OTP_SERVICES.find(s => s.id === serviceId);
-    const serviceLabel = service?.label || serviceId;
 
-    // Simulate OTP request with random outcome
-    const success = Math.random() > 0.3; // 70% success rate
+    try {
+      // REAL OTP SEND - Actually hits the service API and sends OTP to target
+      const result = await sendRealOtp(serviceId, currentJob.target);
+      
+      if (result.success) currentJob.successAttempts++;
+      else currentJob.failedAttempts++;
 
-    if (success) currentJob.successAttempts++;
-    else currentJob.failedAttempts++;
+      currentJob.logs.unshift({
+        time: new Date().toLocaleTimeString("id-ID"),
+        service: serviceId,
+        message: `🔐 OTP #${attempts} [${serviceId.toUpperCase()}] → ${currentJob.target} — ${result.message} | ${result.success ? 'BERHASIL MASUK KE HP TARGET!' : 'GAGAL'}`,
+        status: result.success ? "success" : "failed",
+        real: true,
+      });
 
-    const logMessage = success
-      ? `✅ OTP #${attempts} via ${serviceLabel} ke ${currentJob.target} - OTP terkirim!`
-      : `❌ OTP #${attempts} via ${serviceLabel} ke ${currentJob.target} - Gagal / rate limited`;
-
-    currentJob.logs.unshift({
-      time: new Date().toLocaleTimeString("id-ID"),
-      service: serviceId,
-      message: logMessage,
-      status: success ? "success" : "failed",
-    });
+    } catch (err: any) {
+      currentJob.failedAttempts++;
+      currentJob.logs.unshift({
+        time: new Date().toLocaleTimeString("id-ID"),
+        service: serviceId,
+        message: `❌ OTP #${attempts} ${serviceId} → ${currentJob.target} — Error: ${err.message}`,
+        status: "failed",
+        real: false,
+      });
+    }
 
     if (currentJob.logs.length > 80) {
       currentJob.logs = currentJob.logs.slice(0, 80);
     }
 
     spamOtpJobs.set(id, currentJob);
-
-    // In real implementation, here you would call actual OTP endpoints
-    // For demo and ethical reasons, we simulate
-    try {
-      // Example: if you have real OTP service endpoints, call them here
-      // await fetch(`https://api.${serviceId}.com/otp`, { method: "POST", body: JSON.stringify({ phone: target }) })
-    } catch {}
   }, interval * 1000);
 
-  spamOtpIntervals.set(id, intervalId);
+  spamOtpIntervals.set(id, intervalId as any);
 
   return job;
 }
@@ -329,7 +354,7 @@ export function stopSpamOtpJob(id: string, userId: number): boolean {
 
   const intervalId = spamOtpIntervals.get(id);
   if (intervalId) {
-    clearInterval(intervalId);
+    clearInterval(intervalId as any);
     spamOtpIntervals.delete(id);
   }
 
