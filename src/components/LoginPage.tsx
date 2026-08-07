@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import StarField from "./StarField";
 import BackgroundLayer from "./BackgroundLayer";
+import LogoImage from "./LogoImage";
 
 export default function LoginPage() {
   const { login } = useApp();
@@ -46,15 +47,10 @@ export default function LoginPage() {
         <div className="glass-card-black-red rounded-[18px] p-[28px_22px] relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ff0040] via-white to-transparent shadow-[0_0_10px_#ff0040]" />
 
-          {/* Logo */}
+          {/* Logo - Fixed for Vercel with fallback */}
           <div className="text-center mb-5">
             <div className="flex justify-center mb-3">
-              <img 
-                src="/logo-bimxz.png" 
-                alt="BimxzBugxz"
-                className="w-[110px] h-[110px] rounded-full object-cover border-[2.5px] border-[#ff0040] shadow-[0_0_25px_rgba(255,0,64,0.6),0_0_50px_rgba(255,0,64,0.2)]"
-                onError={(e) => {(e.target as HTMLImageElement).style.display='none'}}
-              />
+              <LogoImage size={110} className="w-[110px] h-[110px]" />
             </div>
             <div className="digital-font bg-gradient-to-br from-white via-[#ff0040] to-white bg-clip-text text-transparent text-[32px] font-black leading-none tracking-tight drop-shadow-[0_0_12px_rgba(255,0,64,0.8)]">
               BimxZ BugXZ

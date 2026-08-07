@@ -8,6 +8,8 @@ import AnnouncementBanner from "./AnnouncementBanner";
 import PairingSection from "./PairingSection";
 import KillGroupSection from "./KillGroupSection";
 import AttackSection from "./AttackSection";
+import PrankCallSection from "./PrankCallSection";
+import SpamOtpSection from "./SpamOtpSection";
 import CinemaSection from "./CinemaSection";
 import ChatSection from "./ChatSection";
 import AISection from "./AISection";
@@ -15,7 +17,7 @@ import ProfileSection from "./ProfileSection";
 import AdminSection from "./AdminSection";
 import LogsSection from "./LogsSection";
 
-type MenuId = "pairing" | "kill-group" | "attack" | "cinema" | "chat" | "ai" | "profile" | "admin" | "logs";
+type MenuId = "pairing" | "kill-group" | "attack" | "prank-call" | "spam-otp" | "cinema" | "chat" | "ai" | "profile" | "admin" | "logs";
 
 export default function Dashboard() {
   const { user } = useApp();
@@ -26,6 +28,8 @@ export default function Dashboard() {
     pairing: <PairingSection />,
     "kill-group": <KillGroupSection />,
     attack: <AttackSection />,
+    "prank-call": <PrankCallSection />,
+    "spam-otp": <SpamOtpSection />,
     cinema: <CinemaSection />,
     chat: <ChatSection />,
     ai: <AISection />,
@@ -38,6 +42,8 @@ export default function Dashboard() {
     pairing: "📲 Pairing WA V2 REAL",
     "kill-group": "💀 Kill Group REAL",
     attack: "⚡ 25 Bug V2 Brutal",
+    "prank-call": "📞 Prank Call V2 NEW",
+    "spam-otp": "🔐 Spam OTP V2 NEW",
     cinema: "🎬 Cinema HD 150+",
     chat: "🌏 Live Chat",
     ai: "🤖 Bimzai AI Arena V2",
@@ -46,7 +52,7 @@ export default function Dashboard() {
     logs: "📋 Logs V2",
   };
 
-  const isFullHeight = ["chat", "ai", "cinema"].includes(activeMenu);
+  const isFullHeight = ["chat", "ai", "cinema", "prank-call", "spam-otp"].includes(activeMenu);
 
   return (
     <div className="fixed inset-0 flex bg-black">
@@ -75,7 +81,7 @@ export default function Dashboard() {
             ))}
           </button>
 
-          <img src="/logo-bimxz.png" alt="logo" className="w-8 h-8 rounded-full border border-[#ff0040] shadow-[0_0_12px_rgba(255,0,64,0.45)] shrink-0" onError={(e)=>{(e.target as HTMLImageElement).style.display='none'}} />
+          <img src="/logo-bimxz.png" alt="logo" className="w-8 h-8 rounded-full border border-[#ff0040] shadow-[0_0_12px_rgba(255,0,64,0.45)] shrink-0" onError={(e)=>{(e.target as HTMLImageElement).src="/icon.png"}} />
 
           <div className="flex-1 min-w-0">
             <p className="digital-font text-[#ff0040] text-[9px] font-extrabold tracking-[1px] m-0 drop-shadow-[0_0_6px_#ff0040]">
