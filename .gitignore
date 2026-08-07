@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Env files - NEVER commit real secrets!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+.env*.local
+
+# Vercel
+.vercel
+
+# Baileys auth - session data
+baileys_auth/
+auth_info_baileys/
+*-auth/
+*auth_info*
+
+# Uploads - user uploaded backgrounds (except placeholder)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Misc
+*.log
+.cache/
+.turbo/
+coverage/
+.nyc_output/
+
+# Keep public icons and logo
+!public/logo-bimxz.png
+!public/icon.png
+!public/icon-192.png
+!public/icon-512.png
+!public/manifest.json

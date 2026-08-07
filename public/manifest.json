@@ -1,0 +1,55 @@
+{
+  "name": "BimxZ BugXZ V2 — Black Red White Neon Ultimate",
+  "short_name": "BimxZ V2",
+  "description": "BimxZ BugXZ V2 Super All-in-One Black Red White Neon Digital by BimzOfficial — Real Baileys v6.7.18 • 25 Bug V2 Brutal • Kill Group Invisible • Cinema HD • AI Arena • 120FPS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#ff0040",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "entertainment", "social"],
+  "lang": "id-ID",
+  "icons": [
+    {
+      "src": "/logo-bimxz.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logo-bimxz.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Pairing WA V2 Real",
+      "short_name": "Pairing",
+      "description": "Hubungkan WA dengan QR & Pairing Code Real Baileys",
+      "url": "/?menu=pairing",
+      "icons": [{ "src": "/logo-bimxz.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "25 Bug Attack V2",
+      "short_name": "Bug Attack",
+      "description": "25 Bug Brutal V2 Real Baileys",
+      "url": "/?menu=attack",
+      "icons": [{ "src": "/logo-bimxz.png", "sizes": "96x96" }]
+    }
+  ]
+}
