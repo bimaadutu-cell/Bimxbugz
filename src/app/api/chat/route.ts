@@ -1,79 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db, getDbStatus, isDatabaseAvailable } from "@/db";
-import { chatMessages } from "@/db/schema";
-import { verifyToken } from "@/lib/auth";
-import { desc } from "drizzle-orm";
-import { memoryDB } from "@/lib/dbMemory";
+import { db } from "@/db";
+import { chats, users } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 export async function GET() {
-  try {
-    const dbStatus = getDbStatus();
-    if (dbStatus.available && isDatabaseAvailable && db) {
-      try {
-        const msgs = await db.select().from(chatMessages).orderBy(desc(chatMessages.createdAt)).limit(100);
-        return NextResponse.json(msgs.reverse().map((m: any) => ({
-          id: m.id,
-          userId: m.userId,
-          username: m.username,
-          message: m.message,
-          createdAt: m.createdAt.toISOString(),
-        })));
-      } catch (e) {
-        console.error("DB chat GET failed, fallback:", e);
-      }
-    }
-
-    // Fallback memory
-    const memMsgs = await memoryDB.getChatMessages(100);
-    return NextResponse.json(memMsgs.map((m: any) => ({
-      id: m.id,
-      userId: m.userId,
-      username: m.username,
-      message: m.message,
-      createdAt: m.createdAt.toISOString(),
-    })));
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json([], { status: 200 });
-  }
+  const list = await db.select().from(chats).orderBy(desc(chats.createdAt)).limit(50);
+  // return reverse chronological -> oldest first for display
+  return Response.json({ ok: true, chats: list.reverse() });
 }
 
-export async function POST(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = verifyToken(auth.slice(7));
-  if (!payload) return NextResponse.json({ error: "Token tidak valid" }, { status: 401 });
+export async function POST(req: Request) {
+  try {
+    const { token, message } = await req.json();
+    if (!token || !message) return Response.json({ ok: false, message: "Token & pesan diperlukan" }, { status: 400 });
+    if (String(message).trim().length === 0) return Response.json({ ok: false, message: "Pesan kosong" }, { status: 400 });
+    if (String(message).length > 500) return Response.json({ ok: false, message: "Pesan maksimal 500 karakter" }, { status: 400 });
 
-  const { message } = await req.json();
-  if (!message?.trim()) return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
+    let uid: number;
+    try { uid = parseInt(Buffer.from(token, "base64").toString("utf-8"), 10); } catch { return Response.json({ ok: false, message: "Token salah" }, { status: 401 }); }
+    const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+    if (!user) return Response.json({ ok: false, message: "User tidak ditemukan" }, { status: 404 });
+    if (!user.isActive) return Response.json({ ok: false, message: "Akun nonaktif" }, { status: 403 });
 
-  const dbStatus = getDbStatus();
-  if (dbStatus.available && isDatabaseAvailable && db) {
-    try {
-      const [msg] = await db.insert(chatMessages).values({
-        userId: payload.userId,
-        username: payload.username,
-        message: message.trim(),
-      }).returning();
-      return NextResponse.json({
-        id: msg.id,
-        userId: msg.userId,
-        username: msg.username,
-        message: msg.message,
-        createdAt: msg.createdAt.toISOString(),
-      });
-    } catch (e) {
-      console.error("DB chat POST failed, fallback memory:", e);
-    }
+    const [chat] = await db.insert(chats).values({
+      userId: uid,
+      username: user.username,
+      role: user.role,
+      message: String(message).trim(),
+    }).returning();
+
+    return Response.json({ ok: true, chat });
+  } catch (e) {
+    return Response.json({ ok: false, message: String(e) }, { status: 500 });
   }
-
-  // Fallback
-  const memMsg = await memoryDB.createChatMessage(payload.userId, payload.username, message.trim());
-  return NextResponse.json({
-    id: memMsg.id,
-    userId: memMsg.userId,
-    username: memMsg.username,
-    message: memMsg.message,
-    createdAt: memMsg.createdAt.toISOString(),
-  });
 }

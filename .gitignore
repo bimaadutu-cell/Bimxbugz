@@ -1,65 +1,50 @@
-# Dependencies
-node_modules/
-.pnp/
+# dependencies
+/node_modules
+/.pnp
 .pnp.js
+.yarn/install-state.gz
 
-# Next.js
-.next/
-out/
-build/
-dist/
+# testing
+/coverage
 
-# Env files - NEVER commit real secrets!
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.production
-.env*.local
+# next.js
+/.next/
+/out/
+/build
+.next
+/out
 
-# Vercel
-.vercel
+# misc
+.DS_Store
+*.pem
 
-# Baileys auth - session data
-baileys_auth/
-auth_info_baileys/
-*-auth/
-*auth_info*
-
-# Uploads - user uploaded backgrounds (except placeholder)
-public/uploads/*
-!public/uploads/.gitkeep
-
-# Logs
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-# OS
-.DS_Store
-Thumbs.db
-*.pem
+# local env files - NEVER commit API keys
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# vercel
+.vercel
+
+# auth files
+auth_info_bimx
+auth_info_baileys
+
+# uploads - local files
+/public/uploads
+/tmp/uploads
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
 
 # IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Misc
-*.log
-.cache/
-.turbo/
-coverage/
-.nyc_output/
-
-# Keep public icons and logo
-!public/logo-bimxz.png
-!public/icon.png
-!public/icon-192.png
-!public/icon-512.png
-!public/manifest.json
+.vscode
+.idea
